@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="日常の作業を、もう少しだけ軽くする小さなツール置き場。" />
+    <title>my-tool — 小さな道具を、手元に</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;600&family=Shippori+Mincho:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="logo" href="#top">my-tool</a>
+      <nav class="nav" aria-label="メイン">
+        <a href="#features">できること</a>
+        <a href="#start">はじめる</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <p class="eyebrow">Personal toolkit</p>
+        <h1>小さな道具を、<br />必要なときにすぐ使える場所。</h1>
+        <p class="lede">
+          my-tool は、日々の作業を少しだけ軽くするためのツール置き場です。
+          余計な機能は置かず、手元で使うものだけを集めています。
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#start">使ってみる</a>
+          <a class="button ghost" href="#features">詳しく見る</a>
+        </div>
+      </section>
+
+      <section id="features" class="features">
+        <h2>シンプルに、必要なことだけ</h2>
+        <ul class="feature-list">
+          <li>
+            <h3>すぐ開ける</h3>
+            <p>インストール待ちはありません。ブラウザを開けば、そのまま使えます。</p>
+          </li>
+          <li>
+            <h3>目的がはっきり</h3>
+            <p>多機能な箱ではなく、ひとつひとつの作業に向けた小さな道具です。</p>
+          </li>
+          <li>
+            <h3>自分のペースで</h3>
+            <p>アカウントも通知も必須ではありません。使いたいときだけ開いてください。</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="start" class="cta">
+        <h2>まずは、置いてある道具から。</h2>
+        <p>これからツールを足していきます。今は入口として、このページからスタートできます。</p>
+        <a class="button primary" href="#top">トップに戻る</a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>© <span id="year"></span> my-tool</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
