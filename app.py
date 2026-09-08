@@ -84,11 +84,12 @@ image_input = None
 image_supplement_text = ""
 
 with upload_tab:
-    camera_file = st.camera_input("カメラで撮影")
-    upload_file = st.file_uploader("またはアルバムから選択", type=["jpg", "jpeg", "png"])
-    target_file = camera_file if camera_file else upload_file
-    if target_file:
-        image_input = Image.open(target_file).convert("RGB")
+    upload_file = st.file_uploader(
+        "📸 冷蔵庫の食材を撮影 / 写真を選択",
+        type=["jpg", "jpeg", "png", "webp"],
+    )
+    if upload_file:
+        image_input = Image.open(upload_file).convert("RGB")
         st.image(image_input, caption="読み込んだ写真", use_container_width=True)
         image_supplement_text = st.text_input(
             "写真の補足・追加食材（任意）",
