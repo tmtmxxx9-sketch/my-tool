@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "うちの在庫",
+  title: "ストックノート",
   description: "家族向け在庫管理アプリ",
 };
 

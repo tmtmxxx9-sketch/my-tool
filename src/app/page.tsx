@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   CalendarDays,
   Camera,
   ClipboardCopy,
   Loader2,
+  LogOut,
   MapPin,
   Plus,
   ShoppingCart,
@@ -18,6 +20,7 @@ import {
   insertInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
+  signOut,
   type InventoryItem,
   type ItemCategory,
   type StockStatus,
@@ -163,6 +166,7 @@ function parseOcrResponseItems(data: OcrApiResponse): ReceiptCandidate[] {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [activeCategory, setActiveCategory] = useState<Category>("すべて");
   const [viewMode, setViewMode] = useState<ViewMode>("attention");
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -577,16 +581,36 @@ export default function HomePage() {
     setReceiptItems((prev) => prev.map((item) => ({ ...item, checked })));
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      setToastMessage("ログアウトに失敗しました");
+    }
+  };
+
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col bg-slate-50 pb-28">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="px-4 pb-3 pt-4">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900">
-            うちの在庫
-          </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            残り少ないものと期限をまとめて確認
-          </p>
+        <div className="flex items-start justify-between gap-3 px-4 pb-3 pt-4">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              ストックノート
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              残り少ないものと期限をまとめて確認
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            aria-label="ログアウト"
+          >
+            <LogOut className="h-5 w-5" />
+          </button>
         </div>
 
         <div className="mx-4 mb-3 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1">

@@ -1,4 +1,5 @@
-import { supabase, type ItemRow } from "./supabase";
+import { createClient } from "@/utils/supabase/client";
+import type { ItemRow } from "./supabase";
 
 export type ItemCategory = "食材" | "調味料" | "日用品";
 export type StockStatus = "残りわずか" | "なし" | "あり";
@@ -59,7 +60,33 @@ export function rowToInventoryItem(row: ItemRow): InventoryItem {
   };
 }
 
+async function getUserGroupId(): Promise<string> {
+  const supabase = createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("ログインが必要です");
+  }
+
+  const { data, error } = await supabase
+    .from("group_members")
+    .select("group_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data?.group_id) {
+    throw new Error("所属グループが見つかりません。管理者に連絡してください。");
+  }
+
+  return data.group_id;
+}
+
 export async function fetchInventoryItems(): Promise<InventoryItem[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from("items")
     .select("*")
@@ -78,9 +105,13 @@ export async function insertInventoryItem(input: {
   status: StockStatus;
   expiryDate?: string;
 }): Promise<InventoryItem> {
+  const supabase = createClient();
+  const groupId = await getUserGroupId();
+
   const { data, error } = await supabase
     .from("items")
     .insert({
+      group_id: groupId,
       name: input.name,
       category: input.category,
       status: input.status,
@@ -105,6 +136,7 @@ export async function updateInventoryItem(
     is_shopping_list: boolean;
   }>,
 ): Promise<InventoryItem> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from("items")
     .update({
@@ -123,8 +155,17 @@ export async function updateInventoryItem(
 }
 
 export async function deleteInventoryItem(id: string): Promise<void> {
+  const supabase = createClient();
   const { error } = await supabase.from("items").delete().eq("id", id);
 
+  if (error) {
+    throw error;
+  }
+}
+
+export async function signOut(): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.auth.signOut();
   if (error) {
     throw error;
   }
