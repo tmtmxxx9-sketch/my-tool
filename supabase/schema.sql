@@ -72,7 +72,7 @@ alter table public.groups enable row level security;
 alter table public.group_members enable row level security;
 alter table public.items enable row level security;
 
--- 6. groups: 自分が所属するグループのみ閲覧可
+-- 6. groups: 自分が所属するグループ + 参加候補グループを閲覧可
 drop policy if exists "groups_select_member" on public.groups;
 create policy "groups_select_member"
 on public.groups
@@ -85,6 +85,7 @@ using (
     where gm.group_id = groups.id
       and gm.user_id = auth.uid()
   )
+  or slug in ('couple', 'sister', 'daughter')
 );
 
 -- 7. group_members: 自分の所属情報のみ閲覧可
@@ -94,6 +95,14 @@ on public.group_members
 for select
 to authenticated
 using (user_id = auth.uid());
+
+-- 初回ログイン時にデフォルトグループ（couple）へ自己登録可能
+drop policy if exists "group_members_insert_self" on public.group_members;
+create policy "group_members_insert_self"
+on public.group_members
+for insert
+to authenticated
+with check (user_id = auth.uid());
 
 -- 8. items: 所属グループのデータのみ CRUD 可
 drop policy if exists "items_select_own_group" on public.items;

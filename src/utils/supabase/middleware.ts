@@ -50,8 +50,16 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute =
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/api/auth/");
+  const isApiRoute = pathname.startsWith("/api/");
 
   if (!user && !isLoginPage && !isAuthRoute) {
+    if (isApiRoute) {
+      return NextResponse.json(
+        { error: "ログインが必要です。" },
+        { status: 401 },
+      );
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     if (pathname !== "/") {

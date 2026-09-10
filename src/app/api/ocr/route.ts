@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import {
+  annotateReceiptImage,
+  resolveGoogleVisionApiKey,
+  validateGoogleVisionApiKey,
+  VisionApiError,
+} from "@/lib/vision-receipt-ocr";
 
 export const runtime = "nodejs";
-
-const VISION_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate";
 
 const SUPPORTED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -169,25 +173,6 @@ const PRODUCT_CODE_PREFIX_PATTERNS: RegExp[] = [
   /^\d{4,}[\s　]*/,
   /^[#＃]\d+[\s　]*/,
 ];
-
-function resolveVisionApiKey(): string | undefined {
-  return process.env.GOOGLE_VISION_API_KEY?.trim();
-}
-
-function logApiKeyStatus(apiKey: string | undefined): void {
-  if (!apiKey) {
-    console.error(
-      "[OCR] GOOGLE_VISION_API_KEY is missing (.env.local を確認)",
-    );
-    return;
-  }
-
-  console.log("[OCR] GOOGLE_VISION_API_KEY loaded:", {
-    length: apiKey.length,
-    prefix: apiKey.slice(0, 4),
-    source: "process.env.GOOGLE_VISION_API_KEY",
-  });
-}
 
 function stripDataUrlPrefix(raw: string): { base64: string; mimeType?: string } {
   const trimmed = raw.trim();
@@ -448,64 +433,15 @@ async function detectReceiptWithVision(input: {
   imageBase64: string;
   byteLength: number;
 }): Promise<ReceiptParseResult> {
-  const url = `${VISION_ENDPOINT}?key=${encodeURIComponent(input.apiKey)}`;
-
-  console.log("[OCR] Calling Vision API TEXT_DETECTION (receipt)", {
+  console.log("[OCR] Calling Vision REST API (DOCUMENT_TEXT_DETECTION)", {
     byteLength: input.byteLength,
     base64Length: input.imageBase64.length,
   });
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      requests: [
-        {
-          image: { content: input.imageBase64 },
-          features: [{ type: "TEXT_DETECTION" }],
-        },
-      ],
-    }),
+  const fullText = await annotateReceiptImage({
+    apiKey: input.apiKey,
+    imageBase64: input.imageBase64,
   });
-
-  const body = (await response.json()) as VisionAnnotateResponse;
-
-  if (!response.ok || body.error) {
-    logVisionFailure({
-      phase: "detectReceiptWithVision",
-      error: body.error ?? body,
-      httpStatus: response.status,
-      byteLength: input.byteLength,
-    });
-    throw Object.assign(new Error(body.error?.message ?? "Vision API エラー"), {
-      httpStatus: response.status,
-      body,
-    });
-  }
-
-  const firstResponse = body.responses?.[0];
-  if (firstResponse?.error) {
-    logVisionFailure({
-      phase: "detectReceiptWithVision.response",
-      error: firstResponse.error,
-      httpStatus: response.status,
-      byteLength: input.byteLength,
-    });
-    throw Object.assign(
-      new Error(firstResponse.error.message ?? "Vision API エラー"),
-      {
-        httpStatus: response.status,
-        body: { error: firstResponse.error },
-      },
-    );
-  }
-
-  const fullText =
-    firstResponse?.fullTextAnnotation?.text?.trim() ??
-    firstResponse?.textAnnotations?.[0]?.description?.trim() ??
-    "";
 
   console.log("[OCR] Vision API response received", {
     textLength: fullText.length,
@@ -528,8 +464,7 @@ async function detectReceiptWithVision(input: {
 export async function POST(request: Request) {
   console.log("[OCR] API called at:", new Date().toISOString());
 
-  const apiKey = resolveVisionApiKey();
-  logApiKeyStatus(apiKey);
+  const apiKey = resolveGoogleVisionApiKey();
 
   if (!apiKey) {
     return NextResponse.json(
@@ -539,6 +474,11 @@ export async function POST(request: Request) {
       },
       { status: 500 },
     );
+  }
+
+  const keyValidationError = validateGoogleVisionApiKey(apiKey);
+  if (keyValidationError) {
+    return NextResponse.json({ error: keyValidationError }, { status: 400 });
   }
 
   let image: ImagePayload | null;
@@ -579,16 +519,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ items: result.items });
   } catch (error) {
     const httpStatus =
-      typeof error === "object" &&
-      error !== null &&
-      "httpStatus" in error &&
-      typeof (error as { httpStatus: unknown }).httpStatus === "number"
-        ? (error as { httpStatus: number }).httpStatus
-        : 500;
+      error instanceof VisionApiError
+        ? error.httpStatus
+        : typeof error === "object" &&
+            error !== null &&
+            "httpStatus" in error &&
+            typeof (error as { httpStatus: unknown }).httpStatus === "number"
+          ? (error as { httpStatus: number }).httpStatus
+          : 500;
     const body =
-      typeof error === "object" && error !== null && "body" in error
-        ? ((error as { body: VisionErrorBody }).body ?? undefined)
-        : undefined;
+      error instanceof VisionApiError
+        ? error.body
+        : typeof error === "object" && error !== null && "body" in error
+          ? ((error as { body: VisionErrorBody }).body ?? undefined)
+          : undefined;
 
     logVisionFailure({
       phase: "POST",
@@ -599,8 +543,7 @@ export async function POST(request: Request) {
     });
 
     const message =
-      body?.error?.message ??
-      (error instanceof Error ? error.message : "OCRの処理に失敗しました");
+      error instanceof Error ? error.message : "OCRの処理に失敗しました";
 
     return NextResponse.json(
       { error: message },

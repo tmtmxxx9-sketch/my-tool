@@ -18,6 +18,7 @@ import {
 import {
   fetchInventoryItems,
   insertInventoryItem,
+  bulkInsertInventoryItems,
   updateInventoryItem,
   deleteInventoryItem,
   signOut,
@@ -26,6 +27,10 @@ import {
   type StockStatus,
 } from "@/lib/inventory";
 import { copyOrShareText } from "@/lib/clipboard";
+import {
+  formatBulkInsertErrorMessage,
+  logClientError,
+} from "@/lib/client-error";
 
 type Category = "すべて" | "食材" | "調味料" | "日用品";
 type ViewMode = "attention" | "all";
@@ -63,6 +68,12 @@ const VIEW_MODES: { id: ViewMode; label: string }[] = [
   { id: "attention", label: "買い足し" },
   { id: "all", label: "すべての在庫" },
 ];
+
+/** レシート自動読み取り（Vision API）を使う場合は true に変更 */
+const RECEIPT_OCR_ENABLED = true;
+const DEFAULT_ADD_MODAL_MODE: AddModalMode = RECEIPT_OCR_ENABLED
+  ? "receipt"
+  : "manual";
 
 function expiryBadgeClass(days: number): string {
   if (days <= 2) {
@@ -174,10 +185,14 @@ export default function HomePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showShoppingModal, setShowShoppingModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addModalMode, setAddModalMode] = useState<AddModalMode>("receipt");
+  const [addModalMode, setAddModalMode] =
+    useState<AddModalMode>(DEFAULT_ADD_MODAL_MODE);
   const [receiptItems, setReceiptItems] = useState<ReceiptCandidate[]>([]);
   const [newItemForm, setNewItemForm] = useState<NewItemForm>(createEmptyForm);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [bulkRegisterError, setBulkRegisterError] = useState<string | null>(
+    null,
+  );
   const [selectedPhotoPreview, setSelectedPhotoPreview] = useState<string | null>(
     null,
   );
@@ -200,16 +215,17 @@ export default function HomePage() {
 
   const closeAddModal = useCallback(() => {
     setShowAddModal(false);
-    setAddModalMode("receipt");
+    setAddModalMode(DEFAULT_ADD_MODAL_MODE);
     setReceiptItems([]);
     setNewItemForm(createEmptyForm());
+    setBulkRegisterError(null);
     setIsProcessing(false);
     isProcessingRef.current = false;
     clearSelectedPhoto();
   }, [clearSelectedPhoto]);
 
   const openAddModal = useCallback(() => {
-    setAddModalMode("receipt");
+    setAddModalMode(DEFAULT_ADD_MODAL_MODE);
     setReceiptItems([]);
     setNewItemForm(createEmptyForm());
     clearSelectedPhoto();
@@ -219,6 +235,12 @@ export default function HomePage() {
   const handleImageChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
+    if (!RECEIPT_OCR_ENABLED) {
+      event.target.value = "";
+      setToastMessage("レシート自動読み取りは現在利用できません");
+      return;
+    }
+
     if (isProcessingRef.current) {
       event.target.value = "";
       return;
@@ -513,7 +535,7 @@ export default function HomePage() {
 
       setItems((prev) => [created, ...prev]);
       setNewItemForm(createEmptyForm());
-      setAddModalMode("receipt");
+      setAddModalMode(DEFAULT_ADD_MODAL_MODE);
       setToastMessage(`${name} を登録しました`);
     } catch {
       setToastMessage("登録に失敗しました");
@@ -523,6 +545,10 @@ export default function HomePage() {
   };
 
   const handleBulkRegister = async () => {
+    if (isSaving) {
+      return;
+    }
+
     const selected = receiptItems.filter(
       (item) => item.checked && item.name.trim().length > 0,
     );
@@ -533,22 +559,24 @@ export default function HomePage() {
     }
 
     setIsSaving(true);
+    setBulkRegisterError(null);
     try {
-      const created = await Promise.all(
-        selected.map((item) =>
-          insertInventoryItem({
-            name: item.name.trim(),
-            category: "食材",
-            status: "あり",
-          }),
-        ),
+      const created = await bulkInsertInventoryItems(
+        selected.map((item) => ({
+          name: item.name.trim(),
+          category: "食材" as const,
+          status: "あり" as const,
+        })),
       );
 
       setItems((prev) => [...created, ...prev]);
       closeAddModal();
       setToastMessage(`${created.length}件を在庫に登録しました`);
-    } catch {
-      setToastMessage("一括登録に失敗しました");
+    } catch (error) {
+      logClientError("Bulk register", error);
+      const message = formatBulkInsertErrorMessage(error);
+      setBulkRegisterError(message);
+      setToastMessage(message);
     } finally {
       setIsSaving(false);
     }
@@ -575,6 +603,9 @@ export default function HomePage() {
   };
 
   const checkedReceiptCount = receiptItems.filter((item) => item.checked).length;
+  const selectableReceiptCount = receiptItems.filter(
+    (item) => item.checked && item.name.trim().length > 0,
+  ).length;
   const isReceiptReviewMode = receiptItems.length > 0;
 
   const toggleAllReceiptItems = (checked: boolean) => {
@@ -941,14 +972,18 @@ export default function HomePage() {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  {isReceiptReviewMode
+                  {RECEIPT_OCR_ENABLED && isReceiptReviewMode
                     ? "レシート一括確認"
-                    : "レシート一括登録"}
+                    : RECEIPT_OCR_ENABLED
+                      ? "レシート一括登録"
+                      : "新規登録"}
                 </h2>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  {isReceiptReviewMode
+                  {RECEIPT_OCR_ENABLED && isReceiptReviewMode
                     ? "チェックと修正をしてから在庫に追加"
-                    : "レシートを撮影して購入品をまとめて登録"}
+                    : RECEIPT_OCR_ENABLED
+                      ? "レシートを撮影して購入品をまとめて登録"
+                      : "品名とカテゴリを入力して追加"}
                 </p>
               </div>
               <button
@@ -961,7 +996,7 @@ export default function HomePage() {
               </button>
             </div>
 
-            {addModalMode === "receipt" ? (
+            {RECEIPT_OCR_ENABLED && addModalMode === "receipt" ? (
               <>
                 <input
                   ref={photoInputRef}
@@ -1090,16 +1125,25 @@ export default function HomePage() {
                       リストに行を追加
                     </button>
 
+                    {bulkRegisterError ? (
+                      <p
+                        role="alert"
+                        className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700"
+                      >
+                        {bulkRegisterError}
+                      </p>
+                    ) : null}
+
                     <button
                       type="button"
                       onClick={() => void handleBulkRegister()}
-                      disabled={isSaving || checkedReceiptCount === 0}
+                      disabled={isSaving || selectableReceiptCount === 0}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white shadow-sm active:scale-[0.98] disabled:opacity-60"
                     >
                       <Plus className="h-4 w-4" />
                       {isSaving
                         ? "登録中..."
-                        : `チェックした商品を一括で在庫に追加（${checkedReceiptCount}件）`}
+                        : `チェックした商品を一括で在庫に追加（${selectableReceiptCount}件）`}
                     </button>
 
                     <button
@@ -1184,13 +1228,19 @@ export default function HomePage() {
               </>
             ) : (
               <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setAddModalMode("receipt")}
-                  className="text-sm font-medium text-emerald-700"
-                >
-                  ← レシート登録に戻る
-                </button>
+                {RECEIPT_OCR_ENABLED ? (
+                  <button
+                    type="button"
+                    onClick={() => setAddModalMode("receipt")}
+                    className="text-sm font-medium text-emerald-700"
+                  >
+                    ← レシート登録に戻る
+                  </button>
+                ) : (
+                  <p className="rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
+                    レシート自動読み取りは現在停止中です。手動で登録してください。
+                  </p>
+                )}
 
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium text-slate-700">
