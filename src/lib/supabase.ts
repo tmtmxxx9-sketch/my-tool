@@ -1,15 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+/** DB 未設定時のビルド通過用プレースホルダ（本番接続には使わない） */
+const PLACEHOLDER_SUPABASE_URL = "https://placeholder.supabase.co";
+const PLACEHOLDER_SUPABASE_KEY = "placeholder-anon-key";
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error(
-    "Supabase の環境変数が未設定です。.env.local に NEXT_PUBLIC_SUPABASE_URL と NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY（または ANON_KEY）を設定してください。",
-  );
-}
+const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const configuredKey =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim() ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+export const isSupabaseConfigured = Boolean(configuredUrl && configuredKey);
+
+const supabaseUrl = configuredUrl || PLACEHOLDER_SUPABASE_URL;
+const supabaseKey = configuredKey || PLACEHOLDER_SUPABASE_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
