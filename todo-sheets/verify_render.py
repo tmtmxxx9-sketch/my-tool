@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import html
+import html as html_lib
 import re
 import sys
 import urllib.error
@@ -59,15 +59,15 @@ def _extract_error(html: str) -> str | None:
 def main() -> None:
     base = (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_URL).rstrip("/")
     print(f"[verify_render] GET {base}/")
-    status, html = _fetch(f"{base}/")
+    status, body = _fetch(f"{base}/")
 
     if status != 200:
         print(f"[verify_render] 本番疎通テスト: 失敗 - HTTP {status}")
         sys.exit(1)
 
-    err = _extract_error(html)
+    err = _extract_error(body)
     if err:
-        err = html.unescape(err)
+        err = html_lib.unescape(err)
         print("[verify_render] 本番疎通テスト: 失敗")
         print(f"  検出メッセージ: {err}")
         if "Extra data" in err:
@@ -76,7 +76,7 @@ def main() -> None:
             print("  ヒント: Render の GOOGLE_SHEETS_SPREADSHEET_URL が未設定・誤り、またはシート未共有の可能性")
         sys.exit(1)
 
-    if "ToDo" not in html and "todo" not in html.lower():
+    if "ToDo" not in body and "todo" not in body.lower():
         print("[verify_render] 本番疎通テスト: 警告 - HTTP 200 だが ToDo UI を確認できません")
         sys.exit(1)
 
