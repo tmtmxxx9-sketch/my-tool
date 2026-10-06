@@ -50,6 +50,40 @@ _SPREADSHEET_ID_PATTERN = re.compile(
     r"/spreadsheets/d/([a-zA-Z0-9-_]+)",
     re.IGNORECASE,
 )
+_SPREADSHEET_ID_IN_PATH = re.compile(r"/d/([a-zA-Z0-9-_]+)", re.IGNORECASE)
+_BARE_SPREADSHEET_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def extract_spreadsheet_id(raw_target: str) -> str | None:
+    """URL 全文・/d/XXX・ID 単体のいずれからも spreadsheet ID を抽出。"""
+    target = raw_target.strip().strip('"').strip("'")
+    if not target:
+        return None
+
+    match = _SPREADSHEET_ID_IN_PATH.search(target)
+    if match:
+        return match.group(1)
+
+    match = _SPREADSHEET_ID_PATTERN.search(target)
+    if match:
+        return match.group(1)
+
+    if _BARE_SPREADSHEET_ID.fullmatch(target) and len(target) >= 20:
+        return target
+
+    return None
+
+
+def _spreadsheet_env_candidates() -> list[str]:
+    ensure_env_loaded()
+    values: list[str] = []
+    for key in ("GOOGLE_SHEETS_SPREADSHEET_ID", "GOOGLE_SHEETS_SPREADSHEET_URL"):
+        value = os.getenv(key, "").strip()
+        if not value:
+            value = _read_env_file(key).strip()
+        if value:
+            values.append(value)
+    return values
 
 
 def resolve_credentials_path() -> Path:
@@ -132,30 +166,15 @@ def _read_env_file(key: str) -> str:
 
 
 def get_spreadsheet_id() -> str:
-    ensure_env_loaded()
-
-    direct = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID", "").strip()
-    if not direct:
-        direct = _read_env_file("GOOGLE_SHEETS_SPREADSHEET_ID").strip()
-    if direct:
-        return direct
-
-    url = os.getenv("GOOGLE_SHEETS_SPREADSHEET_URL", "").strip()
-    if not url:
-        url = _read_env_file("GOOGLE_SHEETS_SPREADSHEET_URL").strip()
-    if url:
-        match = _SPREADSHEET_ID_PATTERN.search(url)
-        if match:
-            return match.group(1)
-        raise ValueError(
-            "GOOGLE_SHEETS_SPREADSHEET_URL の形式が正しくありません。"
-            "例: https://docs.google.com/spreadsheets/d/xxxxxxxx/edit",
-        )
+    for raw in _spreadsheet_env_candidates():
+        spreadsheet_id = extract_spreadsheet_id(raw)
+        if spreadsheet_id:
+            return spreadsheet_id
 
     raise ValueError(
         "GOOGLE_SHEETS_SPREADSHEET_ID が未設定です。"
-        f" {ENV_FILE} に ID または GOOGLE_SHEETS_SPREADSHEET_URL を設定し、"
-        " credentials.json を todo-sheets フォルダに置いてください。",
+        f" {ENV_FILE} または Render の Environment に "
+        "GOOGLE_SHEETS_SPREADSHEET_ID / GOOGLE_SHEETS_SPREADSHEET_URL を設定してください。",
     )
 
 

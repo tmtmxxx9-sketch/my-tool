@@ -44,7 +44,7 @@ def _load_credentials() -> Credentials:
 
 def _worksheet():
     spreadsheet_id = get_spreadsheet_id()
-    sheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET", "Sheet1").strip() or "Sheet1"
+    sheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET", "シート1").strip() or "シート1"
     client = gspread.authorize(_load_credentials())
     spreadsheet = client.open_by_key(spreadsheet_id)
     try:
