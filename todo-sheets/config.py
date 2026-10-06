@@ -60,6 +60,16 @@ def resolve_credentials_path() -> Path:
     return path
 
 
+def get_service_account_json_raw() -> str:
+    """本番: GOOGLE_CREDENTIALS_JSON 等。ローカル: 空なら credentials.json を使用。"""
+    ensure_env_loaded()
+    for key in ("GOOGLE_SERVICE_ACCOUNT_JSON", "GOOGLE_CREDENTIALS_JSON"):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
 def _read_env_file(key: str) -> str:
     """dotenv が OS の空値で上書きできない場合のフォールバック。"""
     if not ENV_FILE.is_file():
@@ -107,8 +117,8 @@ def get_spreadsheet_id() -> str:
 
 
 def get_service_account_email() -> str | None:
-    """credentials.json または GOOGLE_SERVICE_ACCOUNT_JSON から client_email を取得。"""
-    raw_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "").strip()
+    """環境変数 JSON または credentials.json から client_email を取得。"""
+    raw_json = get_service_account_json_raw()
     if raw_json:
         try:
             info = json.loads(raw_json)
@@ -141,10 +151,16 @@ def print_setup_status() -> None:
 
     print("[todo-sheets] 設定チェック")
     print(f"  - {sheet_hint}")
-    print(f"  - 認証 JSON: {cred_path} ({'あり' if cred_path.is_file() else 'なし'})")
+    env_json = bool(get_service_account_json_raw())
+    if env_json:
+        print("  - 認証: 環境変数 GOOGLE_CREDENTIALS_JSON / GOOGLE_SERVICE_ACCOUNT_JSON")
+    else:
+        print(f"  - 認証 JSON: {cred_path} ({'あり' if cred_path.is_file() else 'なし'})")
     if email:
         print(f"  - シート共有先（編集者）: {email}")
-    elif cred_path.is_file():
-        print("  - client_email を credentials.json から読み取れませんでした")
+    elif env_json or cred_path.is_file():
+        print("  - client_email を認証情報から読み取れませんでした")
     else:
-        print("  - credentials.json を配置すると共有先メールが表示されます")
+        print(
+            "  - ローカル: credentials.json / 本番: GOOGLE_CREDENTIALS_JSON を設定してください",
+        )

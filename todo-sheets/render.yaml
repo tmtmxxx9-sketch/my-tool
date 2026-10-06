@@ -1,0 +1,15 @@
+# Render Web Service（Root Directory = todo-sheets に設定してデプロイ）
+# Blueprint 利用時: リポジトリ直下に同内容 + rootDir: todo-sheets が必要な場合あり
+services:
+  - type: web
+    name: todo-sheets
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: FLASK_SECRET_KEY
+        generateValue: true
