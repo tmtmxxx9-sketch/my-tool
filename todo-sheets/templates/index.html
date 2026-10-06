@@ -6,6 +6,9 @@
   <strong>スプレッドシートに接続できません</strong><br />
   {{ error }}<br />
   <small>設定ファイル: <code>todo-sheets/.env</code> に <code>GOOGLE_SHEETS_SPREADSHEET_URL</code>（または ID）と <code>credentials.json</code> を用意し、シートをサービスアカウントに「編集者」で共有してください。</small>
+  {% if service_account_email %}
+  <p style="margin: 0.75rem 0 0;"><strong>共有先メール:</strong> <code>{{ service_account_email }}</code></p>
+  {% endif %}
 </div>
 {% endif %}
 

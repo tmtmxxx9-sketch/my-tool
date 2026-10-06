@@ -7,10 +7,16 @@ import os
 from flask import Flask, flash, redirect, render_template, request, url_for
 
 import config  # noqa: F401 — .env を todo-sheets 基準で読み込む
+from config import get_service_account_email
 from sheets_store import create_todo, get_todo, list_todos, update_todo
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
+
+
+@app.context_processor
+def inject_sheet_setup():
+    return {"service_account_email": get_service_account_email()}
 
 
 @app.route("/")
@@ -83,5 +89,8 @@ def edit(todo_id: str):
 
 
 if __name__ == "__main__":
+    from config import print_setup_status
+
+    print_setup_status()
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG") == "1")
