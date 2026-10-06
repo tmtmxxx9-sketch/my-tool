@@ -11,7 +11,13 @@ from typing import Any
 import gspread
 from google.oauth2.service_account import Credentials
 
-from config import APP_DIR, get_service_account_info, get_spreadsheet_id, resolve_credentials_path
+from config import (
+    APP_DIR,
+    get_service_account_info,
+    get_spreadsheet_id,
+    get_spreadsheet_id_candidates,
+    resolve_credentials_path,
+)
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -42,11 +48,31 @@ def _load_credentials() -> Credentials:
     )
 
 
+def _open_spreadsheet(client: gspread.Client):
+    candidates = get_spreadsheet_id_candidates()
+    if not candidates:
+        get_spreadsheet_id()  # raises with clear message
+
+    last_404: gspread.exceptions.APIError | None = None
+    for spreadsheet_id in candidates:
+        try:
+            return client.open_by_key(spreadsheet_id)
+        except gspread.exceptions.APIError as exc:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status == 404:
+                last_404 = exc
+                continue
+            raise
+
+    if last_404 is not None:
+        raise last_404
+    raise ValueError("スプレッドシート ID を解決できませんでした")
+
+
 def _worksheet():
-    spreadsheet_id = get_spreadsheet_id()
     sheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET", "シート1").strip() or "シート1"
     client = gspread.authorize(_load_credentials())
-    spreadsheet = client.open_by_key(spreadsheet_id)
+    spreadsheet = _open_spreadsheet(client)
     try:
         ws = spreadsheet.worksheet(sheet_name)
     except gspread.WorksheetNotFound:

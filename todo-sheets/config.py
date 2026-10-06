@@ -165,11 +165,22 @@ def _read_env_file(key: str) -> str:
     return ""
 
 
-def get_spreadsheet_id() -> str:
+def get_spreadsheet_id_candidates() -> list[str]:
+    """環境変数から抽出した spreadsheet ID（重複除去・出現順を維持）。"""
+    seen: set[str] = set()
+    ids: list[str] = []
     for raw in _spreadsheet_env_candidates():
         spreadsheet_id = extract_spreadsheet_id(raw)
-        if spreadsheet_id:
-            return spreadsheet_id
+        if spreadsheet_id and spreadsheet_id not in seen:
+            seen.add(spreadsheet_id)
+            ids.append(spreadsheet_id)
+    return ids
+
+
+def get_spreadsheet_id() -> str:
+    ids = get_spreadsheet_id_candidates()
+    if ids:
+        return ids[0]
 
     raise ValueError(
         "GOOGLE_SHEETS_SPREADSHEET_ID が未設定です。"
