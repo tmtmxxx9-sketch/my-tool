@@ -92,5 +92,9 @@ if __name__ == "__main__":
     from config import print_setup_status
 
     print_setup_status()
+    if os.getenv("TODO_SHEETS_VERIFY_ON_START", "").strip() in ("1", "true", "yes"):
+        from verify_sheets import main as verify_main
+
+        verify_main()
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port, debug=os.getenv("FLASK_DEBUG") == "1")
