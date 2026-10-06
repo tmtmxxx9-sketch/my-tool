@@ -51,25 +51,47 @@ _SPREADSHEET_ID_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _SPREADSHEET_ID_IN_PATH = re.compile(r"/d/([a-zA-Z0-9-_]+)", re.IGNORECASE)
-_BARE_SPREADSHEET_ID = re.compile(r"^[a-zA-Z0-9_-]+$")
+_GOOGLE_SHEET_ID_TOKEN = re.compile(r"[a-zA-Z0-9_-]{40,50}")
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f\u200b-\u200d\ufeff]")
+
+
+def sanitize_env_string(value: str) -> str:
+    """改行・BOM・不可視制御文字を除去（Render 環境変数向け）。"""
+    if not value:
+        return ""
+    cleaned = value.replace("\r", "").replace("\n", "")
+    cleaned = _CONTROL_CHARS.sub("", cleaned)
+    return cleaned.strip().strip('"').strip("'")
+
+
+def normalize_spreadsheet_id_token(token: str) -> str | None:
+    """英数字・ハイフン・アンダースコアのみの 40〜50 文字 ID に正規化。"""
+    bare = re.sub(r"[^a-zA-Z0-9_-]", "", sanitize_env_string(token))
+    if _GOOGLE_SHEET_ID_TOKEN.fullmatch(bare):
+        return bare
+    return None
 
 
 def extract_spreadsheet_id(raw_target: str) -> str | None:
     """URL 全文・/d/XXX・ID 単体のいずれからも spreadsheet ID を抽出。"""
-    target = raw_target.strip().strip('"').strip("'")
+    target = sanitize_env_string(raw_target)
     if not target:
         return None
 
-    match = _SPREADSHEET_ID_IN_PATH.search(target)
-    if match:
-        return match.group(1)
+    for pattern in (_SPREADSHEET_ID_IN_PATH, _SPREADSHEET_ID_PATTERN):
+        match = pattern.search(target)
+        if match:
+            normalized = normalize_spreadsheet_id_token(match.group(1))
+            if normalized:
+                return normalized
 
-    match = _SPREADSHEET_ID_PATTERN.search(target)
-    if match:
-        return match.group(1)
+    normalized = normalize_spreadsheet_id_token(target)
+    if normalized:
+        return normalized
 
-    if _BARE_SPREADSHEET_ID.fullmatch(target) and len(target) >= 20:
-        return target
+    fallback = _GOOGLE_SHEET_ID_TOKEN.search(target)
+    if fallback:
+        return fallback.group(0)
 
     return None
 
@@ -78,9 +100,9 @@ def _spreadsheet_env_candidates() -> list[str]:
     ensure_env_loaded()
     values: list[str] = []
     for key in ("GOOGLE_SHEETS_SPREADSHEET_ID", "GOOGLE_SHEETS_SPREADSHEET_URL"):
-        value = os.getenv(key, "").strip()
+        value = sanitize_env_string(os.getenv(key, ""))
         if not value:
-            value = _read_env_file(key).strip()
+            value = sanitize_env_string(_read_env_file(key))
         if value:
             values.append(value)
     return values

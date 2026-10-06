@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -17,6 +18,7 @@ from config import (
     get_spreadsheet_id,
     get_spreadsheet_id_candidates,
     resolve_credentials_path,
+    sanitize_env_string,
 )
 
 SCOPES = [
@@ -48,6 +50,14 @@ def _load_credentials() -> Credentials:
     )
 
 
+def _log_sheets_error(spreadsheet_id: str, exc: Exception) -> None:
+    print(
+        f"[Sheets Error] 試行したID: {spreadsheet_id!r}, 詳細: {exc}",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
 def _open_spreadsheet(client: gspread.Client):
     candidates = get_spreadsheet_id_candidates()
     if not candidates:
@@ -58,10 +68,14 @@ def _open_spreadsheet(client: gspread.Client):
         try:
             return client.open_by_key(spreadsheet_id)
         except gspread.exceptions.APIError as exc:
+            _log_sheets_error(spreadsheet_id, exc)
             status = getattr(getattr(exc, "response", None), "status_code", None)
             if status == 404:
                 last_404 = exc
                 continue
+            raise
+        except Exception as exc:
+            _log_sheets_error(spreadsheet_id, exc)
             raise
 
     if last_404 is not None:
@@ -70,7 +84,7 @@ def _open_spreadsheet(client: gspread.Client):
 
 
 def _worksheet():
-    sheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET", "シート1").strip() or "シート1"
+    sheet_name = sanitize_env_string(os.getenv("GOOGLE_SHEETS_WORKSHEET", "シート1")) or "シート1"
     client = gspread.authorize(_load_credentials())
     spreadsheet = _open_spreadsheet(client)
     try:
