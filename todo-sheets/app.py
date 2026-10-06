@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import os
 
-from dotenv import load_dotenv
 from flask import Flask, flash, redirect, render_template, request, url_for
 
+import config  # noqa: F401 — .env を todo-sheets 基準で読み込む
 from sheets_store import create_todo, get_todo, list_todos, update_todo
-
-load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")

@@ -5,7 +5,7 @@
 <div class="error-box">
   <strong>スプレッドシートに接続できません</strong><br />
   {{ error }}<br />
-  <small>.env と credentials.json、シート共有（サービスアカウントのメール）を確認してください。</small>
+  <small>設定ファイル: <code>todo-sheets/.env</code> に <code>GOOGLE_SHEETS_SPREADSHEET_URL</code>（または ID）と <code>credentials.json</code> を用意し、シートをサービスアカウントに「編集者」で共有してください。</small>
 </div>
 {% endif %}
 

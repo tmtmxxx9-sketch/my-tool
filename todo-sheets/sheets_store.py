@@ -11,6 +11,8 @@ from typing import Any
 import gspread
 from google.oauth2.service_account import Credentials
 
+from config import APP_DIR, get_spreadsheet_id, resolve_credentials_path
+
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
@@ -34,27 +36,30 @@ def _load_credentials() -> Credentials:
         info = json.loads(raw_json)
         return Credentials.from_service_account_info(info, scopes=SCOPES)
 
-    path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "credentials.json").strip()
-    if not os.path.isfile(path):
+    path = resolve_credentials_path()
+    if not path.is_file():
         raise FileNotFoundError(
             f"サービスアカウント JSON が見つかりません: {path} "
-            "（GOOGLE_APPLICATION_CREDENTIALS または GOOGLE_SERVICE_ACCOUNT_JSON を設定）",
+            f"（{APP_DIR} に credentials.json を配置するか "
+            "GOOGLE_APPLICATION_CREDENTIALS / GOOGLE_SERVICE_ACCOUNT_JSON を設定）",
         )
-    return Credentials.from_service_account_file(path, scopes=SCOPES)
+    return Credentials.from_service_account_file(str(path), scopes=SCOPES)
 
 
 def _worksheet():
-    spreadsheet_id = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID", "").strip()
-    if not spreadsheet_id:
-        raise ValueError("GOOGLE_SHEETS_SPREADSHEET_ID が未設定です")
-
+    spreadsheet_id = get_spreadsheet_id()
     sheet_name = os.getenv("GOOGLE_SHEETS_WORKSHEET", "Sheet1").strip() or "Sheet1"
     client = gspread.authorize(_load_credentials())
     spreadsheet = client.open_by_key(spreadsheet_id)
     try:
         ws = spreadsheet.worksheet(sheet_name)
     except gspread.WorksheetNotFound:
-        ws = spreadsheet.add_worksheet(title=sheet_name, rows=100, cols=len(HEADERS))
+        try:
+            ws = spreadsheet.sheet1
+        except Exception as exc:
+            raise gspread.WorksheetNotFound(
+                f"ワークシート '{sheet_name}' が見つかりません",
+            ) from exc
 
     first_row = ws.row_values(1)
     if first_row != HEADERS:
