@@ -35,10 +35,16 @@ _configure_ssl_ca_bundle()
 
 APP_DIR = Path(__file__).resolve().parent
 
-# todo-sheets/.env を優先（my-tool ルートから起動しても反映）
-load_dotenv(APP_DIR / ".env")
-# 任意: ルート .env に GOOGLE_SHEETS_* がある場合のフォールバック
-load_dotenv(APP_DIR.parent / ".env")
+ENV_FILE = APP_DIR / ".env"
+
+
+def ensure_env_loaded() -> None:
+    """リクエストごとにも todo-sheets/.env を確実に反映（空の OS 環境変数より .env を優先）。"""
+    load_dotenv(APP_DIR.parent / ".env")
+    load_dotenv(ENV_FILE, override=True)
+
+
+ensure_env_loaded()
 
 _SPREADSHEET_ID_PATTERN = re.compile(
     r"/spreadsheets/d/([a-zA-Z0-9-_]+)",
@@ -54,12 +60,36 @@ def resolve_credentials_path() -> Path:
     return path
 
 
+def _read_env_file(key: str) -> str:
+    """dotenv が OS の空値で上書きできない場合のフォールバック。"""
+    if not ENV_FILE.is_file():
+        return ""
+    try:
+        text = ENV_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        name, _, value = stripped.partition("=")
+        if name.strip() == key:
+            return value.strip().strip('"').strip("'")
+    return ""
+
+
 def get_spreadsheet_id() -> str:
+    ensure_env_loaded()
+
     direct = os.getenv("GOOGLE_SHEETS_SPREADSHEET_ID", "").strip()
+    if not direct:
+        direct = _read_env_file("GOOGLE_SHEETS_SPREADSHEET_ID").strip()
     if direct:
         return direct
 
     url = os.getenv("GOOGLE_SHEETS_SPREADSHEET_URL", "").strip()
+    if not url:
+        url = _read_env_file("GOOGLE_SHEETS_SPREADSHEET_URL").strip()
     if url:
         match = _SPREADSHEET_ID_PATTERN.search(url)
         if match:
@@ -71,7 +101,7 @@ def get_spreadsheet_id() -> str:
 
     raise ValueError(
         "GOOGLE_SHEETS_SPREADSHEET_ID が未設定です。"
-        f" {APP_DIR / '.env'} に ID または GOOGLE_SHEETS_SPREADSHEET_URL を設定し、"
+        f" {ENV_FILE} に ID または GOOGLE_SHEETS_SPREADSHEET_URL を設定し、"
         " credentials.json を todo-sheets フォルダに置いてください。",
     )
 

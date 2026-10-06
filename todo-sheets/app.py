@@ -7,11 +7,16 @@ import os
 from flask import Flask, flash, redirect, render_template, request, url_for
 
 import config  # noqa: F401 — .env を todo-sheets 基準で読み込む
-from config import get_service_account_email
+from config import ensure_env_loaded, get_service_account_email
 from sheets_store import create_todo, get_todo, list_todos, update_todo
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-change-me")
+
+
+@app.before_request
+def _ensure_todo_sheets_env():
+    ensure_env_loaded()
 
 
 @app.context_processor
