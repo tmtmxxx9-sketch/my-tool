@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}編集{% else %}新規{% endif %}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2 style="margin: 0 0 0.5rem; font-size: 1.1rem;">
+    {% if item %}ToDo #{{ item.id }} を編集{% else %}新規 ToDo{% endif %}
+  </h2>
+  <form method="post">
+    <label for="title">タイトル *</label>
+    <input type="text" id="title" name="title" value="{{ form_title }}" required maxlength="200" />
+
+    <label for="content">内容</label>
+    <textarea id="content" name="content">{{ form_content }}</textarea>
+
+    <label for="due_date">期日</label>
+    <input type="date" id="due_date" name="due_date" value="{{ form_due_date }}" />
+
+    <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      <button type="submit" class="btn btn-primary">{% if item %}更新{% else %}登録{% endif %}</button>
+      <a class="btn btn-ghost" href="{{ url_for('index') }}">キャンセル</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

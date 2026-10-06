@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}ToDo{% endblock %} | Sheets ToDo</title>
+  <style>
+    :root { --bg: #f4f6f8; --card: #fff; --accent: #2563eb; --text: #0f172a; --muted: #64748b; --danger: #dc2626; --ok: #059669; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 1rem 1rem 2.5rem; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+    h1 { font-size: 1.35rem; margin: 0; }
+    a.btn, button.btn { display: inline-block; padding: 0.65rem 1rem; border-radius: 10px; text-decoration: none; font-weight: 600; border: none; font-size: 1rem; cursor: pointer; }
+    a.btn-primary, button.btn-primary { background: var(--accent); color: #fff; }
+    a.btn-ghost { background: #e2e8f0; color: var(--text); }
+    .flash { padding: 0.75rem 1rem; border-radius: 10px; margin-bottom: 1rem; font-size: 0.95rem; }
+    .flash.error { background: #fee2e2; color: #991b1b; }
+    .flash.success { background: #d1fae5; color: #065f46; }
+    .card { background: var(--card); border-radius: 14px; padding: 1rem; box-shadow: 0 1px 3px rgb(0 0 0 / 8%); margin-bottom: 0.75rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { text-align: left; padding: 0.5rem 0.35rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin: 0.75rem 0 0.35rem; }
+    input[type="text"], input[type="date"], textarea {
+      width: 100%; padding: 0.65rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1rem;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    .error-box { background: #fee2e2; color: #991b1b; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; }
+    @media (max-width: 600px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr.card-row { margin-bottom: 0.75rem; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0.75rem; background: var(--card); }
+      td { border: none; padding: 0.25rem 0; }
+      td::before { content: attr(data-label); font-weight: 600; color: var(--muted); font-size: 0.75rem; display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>📋 Sheets ToDo</h1>
+      <a class="btn btn-primary" href="{{ url_for('create') }}">＋ 新規</a>
+    </header>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

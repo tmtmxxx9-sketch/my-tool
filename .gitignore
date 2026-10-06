@@ -11,3 +11,8 @@ venv/
 .DS_Store
 node_modules/
 .next/
+.line-dify-export/
+credentials.json
+**/credentials.json
+todo-sheets/.env
+todo-sheets/credentials.json

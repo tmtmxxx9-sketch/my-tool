@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}一覧{% endblock %}
+{% block content %}
+{% if error %}
+<div class="error-box">
+  <strong>スプレッドシートに接続できません</strong><br />
+  {{ error }}<br />
+  <small>.env と credentials.json、シート共有（サービスアカウントのメール）を確認してください。</small>
+</div>
+{% endif %}
+
+<div class="card">
+  {% if todos %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>タイトル</th>
+        <th>内容</th>
+        <th>期日</th>
+        <th>作成日時</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in todos %}
+      <tr class="card-row">
+        <td data-label="ID">{{ t.id }}</td>
+        <td data-label="タイトル"><strong>{{ t.title }}</strong></td>
+        <td data-label="内容">{{ t.content or "—" }}</td>
+        <td data-label="期日">{{ t.due_date or "—" }}</td>
+        <td data-label="作成">{{ t.created_at }}</td>
+        <td data-label="操作"><a href="{{ url_for('edit', todo_id=t.id) }}">編集</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: var(--muted); margin: 0;">ToDo がありません。「＋ 新規」から追加してください。</p>
+  {% endif %}
+</div>
+{% endblock %}
