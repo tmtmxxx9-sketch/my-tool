@@ -9,6 +9,30 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+
+def _configure_ssl_ca_bundle() -> None:
+    """Windows 等で oauth2.googleapis.com 等の TLS 検証失敗を防ぐ。"""
+    try:
+        import truststore
+
+        truststore.inject_into_ssl()
+        return
+    except ImportError:
+        pass
+    if os.environ.get("SSL_CERT_FILE"):
+        return
+    try:
+        import certifi
+
+        ca = certifi.where()
+        os.environ["SSL_CERT_FILE"] = ca
+        os.environ["REQUESTS_CA_BUNDLE"] = ca
+    except ImportError:
+        pass
+
+
+_configure_ssl_ca_bundle()
+
 APP_DIR = Path(__file__).resolve().parent
 
 # todo-sheets/.env を優先（my-tool ルートから起動しても反映）
