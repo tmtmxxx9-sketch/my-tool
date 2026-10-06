@@ -15,7 +15,8 @@ copy .env.example .env
 - 一覧: http://127.0.0.1:5000/
 - 新規: http://127.0.0.1:5000/create
 
-疎通: `python verify_sheets.py` / 共有先メール: `python print_client_email.py`  
+疎通: `python verify_sheets.py` / 本番: `python verify_render.py`  
+共有先メール: `python print_client_email.py`  
 Render 用 1 行 JSON: `python print_credentials_env.py`（画面確認用）  
 **クリップボードへ直接コピー（推奨）:** `python copy_credentials_to_clipboard.py` → Render の `GOOGLE_CREDENTIALS_JSON` に Ctrl+V
 
