@@ -11,7 +11,7 @@ from typing import Any
 import gspread
 from google.oauth2.service_account import Credentials
 
-from config import APP_DIR, get_service_account_json_raw, get_spreadsheet_id, resolve_credentials_path
+from config import APP_DIR, get_service_account_info, get_spreadsheet_id, resolve_credentials_path
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -31,15 +31,11 @@ class TodoItem:
 
 
 def _load_credentials() -> Credentials:
-    raw_json = get_service_account_json_raw()
-    if raw_json:
-        info = json.loads(raw_json)
+    info = get_service_account_info()
+    if info:
         return Credentials.from_service_account_info(info, scopes=SCOPES)
 
     path = resolve_credentials_path()
-    if path.is_file():
-        return Credentials.from_service_account_file(str(path), scopes=SCOPES)
-
     raise FileNotFoundError(
         f"サービスアカウント JSON が見つかりません: {path} "
         f"（ローカル: {APP_DIR}/credentials.json / 本番: 環境変数 GOOGLE_CREDENTIALS_JSON）",

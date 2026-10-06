@@ -70,6 +70,49 @@ def get_service_account_json_raw() -> str:
     return ""
 
 
+def parse_service_account_json(raw_val: str) -> dict:
+    """
+    環境変数由来の JSON を 1 オブジェクトに正規化する。
+    末尾の余分文字（Extra data）や前後のクォート混入に耐える。
+    """
+    raw = raw_val.strip()
+    if not raw:
+        raise ValueError("サービスアカウント JSON が空です")
+
+    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+        raw = raw[1:-1].strip()
+
+    decoder = json.JSONDecoder()
+    idx = raw.find("{")
+    if idx == -1:
+        info = json.loads(raw)
+    else:
+        info, _end = decoder.raw_decode(raw[idx:])
+        if not isinstance(info, dict):
+            raise ValueError("サービスアカウント JSON はオブジェクトである必要があります")
+
+    if info.get("type") != "service_account" or not info.get("private_key"):
+        raise ValueError("service_account 鍵 JSON の形式が正しくありません（type / private_key）")
+
+    return info
+
+
+def get_service_account_info() -> dict | None:
+    """環境変数または credentials.json からサービスアカウント info dict を取得。"""
+    raw_json = get_service_account_json_raw()
+    if raw_json:
+        return parse_service_account_json(raw_json)
+
+    path = resolve_credentials_path()
+    if not path.is_file():
+        return None
+    with path.open(encoding="utf-8") as f:
+        info = json.load(f)
+    if not isinstance(info, dict):
+        raise ValueError(f"credentials.json の形式が不正です: {path}")
+    return info
+
+
 def _read_env_file(key: str) -> str:
     """dotenv が OS の空値で上書きできない場合のフォールバック。"""
     if not ENV_FILE.is_file():
@@ -118,25 +161,14 @@ def get_spreadsheet_id() -> str:
 
 def get_service_account_email() -> str | None:
     """環境変数 JSON または credentials.json から client_email を取得。"""
-    raw_json = get_service_account_json_raw()
-    if raw_json:
-        try:
-            info = json.loads(raw_json)
-            email = info.get("client_email")
-            return str(email).strip() if email else None
-        except json.JSONDecodeError:
-            return None
-
-    path = resolve_credentials_path()
-    if not path.is_file():
-        return None
     try:
-        with path.open(encoding="utf-8") as f:
-            info = json.load(f)
-        email = info.get("client_email")
-        return str(email).strip() if email else None
-    except (OSError, json.JSONDecodeError):
+        info = get_service_account_info()
+    except (OSError, json.JSONDecodeError, ValueError):
         return None
+    if not info:
+        return None
+    email = info.get("client_email")
+    return str(email).strip() if email else None
 
 
 def print_setup_status() -> None:
