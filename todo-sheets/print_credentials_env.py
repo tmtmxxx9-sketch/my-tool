@@ -7,8 +7,8 @@ import sys
 
 from config import get_service_account_json_raw, resolve_credentials_path
 
-BEGIN = "----- BEGIN GOOGLE_CREDENTIALS_JSON (Render に貼り付け) -----"
-END = "----- END GOOGLE_CREDENTIALS_JSON -----"
+BEGIN = "----- ここからコピー（この行は含めない） -----"
+END = "----- ここまでコピー（この行は含めない） -----"
 
 
 def main() -> None:
@@ -32,9 +32,17 @@ def main() -> None:
             print(f"error: cannot read {path}: {exc}", file=sys.stderr)
             sys.exit(1)
 
+    print("", flush=True)
+    print("【Render の貼り付け先】", flush=True)
+    print("  場所: Web Service → Environment → Add Environment Variable", flush=True)
+    print("  Key（名前）  : GOOGLE_CREDENTIALS_JSON", flush=True)
+    print("  Value（値）  : 下の1行だけをコピー（BEGIN/END の行はコピーしない）", flush=True)
+    print("", flush=True)
     print(BEGIN, flush=True)
     print(compact, flush=True)
     print(END, flush=True)
+    print("", flush=True)
+    print("※ GOOGLE_SERVICE_ACCOUNT_JSON ではなく GOOGLE_CREDENTIALS_JSON を使ってください。", flush=True)
 
 
 if __name__ == "__main__":

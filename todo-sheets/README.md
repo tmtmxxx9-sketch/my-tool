@@ -20,6 +20,23 @@ Render 用 1 行 JSON: `python print_credentials_env.py`（`BEGIN`/`END` の間�
 
 ## Render へのデプロイ
 
+### JSON の鍵は「どこに」貼る？
+
+**結論: 環境変数の名前（Key）を `GOOGLE_CREDENTIALS_JSON` にして、値（Value）に 1 行 JSON を貼る。**
+
+| Render の入力欄 | 入れるもの |
+|----------------|------------|
+| **Key（Variable Name）** | `GOOGLE_CREDENTIALS_JSON` ← **この名前をそのまま** |
+| **Value（Variable Value）** | ターミナルで `python print_credentials_env.py` を実行し、**「ここからコピー」と「ここまでコピー」の間の 1 行だけ** |
+
+貼ってはいけないもの:
+
+- `----- ここからコピー -----` などの **区切り行そのもの**
+- 改行を入れた **複数行の JSON ファイル**（Render では 1 行にまとめる）
+- 別の Key 名（例: `credentials.json` という名前の変数は **使わない**）
+
+同じ JSON を `GOOGLE_SERVICE_ACCOUNT_JSON` に貼っても動きますが、**迷ったら `GOOGLE_CREDENTIALS_JSON` だけ**で OK です。
+
 ### 1. リポジトリ連携
 
 1. [Render](https://render.com/) → **New** → **Web Service** → GitHub リポジトリ `my-tool` を選択
@@ -31,16 +48,16 @@ Render 用 1 行 JSON: `python print_credentials_env.py`（`BEGIN`/`END` の間�
 
 ### 2. 環境変数（Dashboard → Environment）
 
-| 変数 | 必須 | 説明 |
-|------|------|------|
-| `GOOGLE_SHEETS_SPREADSHEET_URL` | ○ | スプレッドシート URL 全文 |
-| `GOOGLE_SHEETS_WORKSHEET` | ○ | 例: `シート1` |
-| `GOOGLE_CREDENTIALS_JSON` | ○ | サービスアカウント鍵 JSON を **1 行** で貼り付け（`type` / `private_key` / `client_email` を含む） |
-| `FLASK_SECRET_KEY` | ○ | ランダムな長い文字列 |
-| `GOOGLE_SHEETS_SPREADSHEET_ID` | △ | URL の代わりに ID のみでも可 |
-| `GOOGLE_SERVICE_ACCOUNT_JSON` | △ | `GOOGLE_CREDENTIALS_JSON` の別名（どちらか一方） |
+最低限、次の **4 つ** を追加します。
 
-`GOOGLE_CREDENTIALS_JSON` は Render の Secret として登録してください。ファイル `credentials.json` は **Git に含めません**。
+| Key（名前） | Value（値）の例 |
+|-------------|-----------------|
+| `GOOGLE_CREDENTIALS_JSON` | `print_credentials_env.py` の **1 行 JSON**（秘密鍵） |
+| `GOOGLE_SHEETS_SPREADSHEET_URL` | `https://docs.google.com/spreadsheets/d/xxxxx/edit` |
+| `GOOGLE_SHEETS_WORKSHEET` | `シート1` |
+| `FLASK_SECRET_KEY` | 適当な長いランダム文字列 |
+
+`GOOGLE_CREDENTIALS_JSON` は **Secret**（鍵マーク）にすると安全です。`credentials.json` ファイル自体は Render にアップロードしません。
 
 ### 3. スプレッドシート共有
 
