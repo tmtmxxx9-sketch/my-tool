@@ -15,6 +15,19 @@
     <label for="due_date">期日</label>
     <input type="date" id="due_date" name="due_date" value="{{ form_due_date }}" />
 
+    <fieldset class="priority-fieldset">
+      <legend>重要度</legend>
+      <label class="priority-option">
+        <input type="radio" name="priority" value="高" {% if form_priority == '高' %}checked{% endif %} /> 高
+      </label>
+      <label class="priority-option">
+        <input type="radio" name="priority" value="中" {% if form_priority == '中' or not form_priority %}checked{% endif %} /> 中
+      </label>
+      <label class="priority-option">
+        <input type="radio" name="priority" value="低" {% if form_priority == '低' %}checked{% endif %} /> 低
+      </label>
+    </fieldset>
+
     <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
       <button type="submit" class="btn btn-primary">{% if item %}更新{% else %}登録{% endif %}</button>
       <a class="btn btn-ghost" href="{{ url_for('index') }}">キャンセル</a>

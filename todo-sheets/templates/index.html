@@ -12,6 +12,13 @@
 </div>
 {% endif %}
 
+<div class="card sort-bar">
+  <span class="sort-label">並び替え:</span>
+  <a class="sort-link {% if sort == sort_id %}active{% endif %}" href="{{ url_for('index', sort=sort_id) }}">新着順</a>
+  <a class="sort-link {% if sort == sort_due %}active{% endif %}" href="{{ url_for('index', sort=sort_due) }}">期日順</a>
+  <a class="sort-link {% if sort == sort_priority %}active{% endif %}" href="{{ url_for('index', sort=sort_priority) }}">重要度順</a>
+</div>
+
 <div class="card">
   {% if todos %}
   <table>
@@ -21,19 +28,32 @@
         <th>タイトル</th>
         <th>内容</th>
         <th>期日</th>
+        <th>重要度</th>
         <th>作成日時</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       {% for t in todos %}
-      <tr class="card-row">
+      {% set badge = t.due_date | due_badge %}
+      <tr class="card-row{% if badge %} row-alert{% endif %}">
         <td data-label="ID">{{ t.id }}</td>
         <td data-label="タイトル"><strong>{{ t.title }}</strong></td>
         <td data-label="内容">{{ t.content or "—" }}</td>
-        <td data-label="期日">{{ t.due_date or "—" }}</td>
+        <td data-label="期日">
+          {% if badge %}<span class="{{ badge.css }}">{{ badge.label }}</span>{% endif %}
+          {{ t.due_date or "—" }}
+        </td>
+        <td data-label="重要度">
+          <span class="priority-tag priority-{{ t.priority }}">{{ t.priority }}</span>
+        </td>
         <td data-label="作成">{{ t.created_at }}</td>
-        <td data-label="操作"><a href="{{ url_for('edit', todo_id=t.id) }}">編集</a></td>
+        <td data-label="操作" class="actions-cell">
+          <a href="{{ url_for('edit', todo_id=t.id) }}">編集</a>
+          <form method="post" action="{{ url_for('notify_line', todo_id=t.id, sort=sort) }}" class="inline-form">
+            <button type="submit" class="btn-link">LINE</button>
+          </form>
+        </td>
       </tr>
       {% endfor %}
     </tbody>
